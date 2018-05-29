@@ -14,58 +14,58 @@ using namespace std;
 
 
 int main(int argc, char *argv[]) {
-	string filename = "test.jpg";   // default input file
+	/* Set the path of input files*/
+	char inputPath[100];
+	memset(inputPath, 0, 100);
+	_getcwd(inputPath, 100); // Get current path
+	strcat_s(inputPath, "\\images\\*");
+	string filename = "";
+
+	/* Set the output files info*/
+	
 	string outputPath = "outputs/";
 	if (_access(outputPath.c_str(), 6) == -1) {
 		_mkdir(outputPath.c_str());
 	}
 	ImageWriter iw(outputPath);
 
-	// Check if input a filename in command line
+	/* User Interface */
 	if (argc == 1) {  // No extra input arguments
-		string fileTmp;
-		cout << "Please input a image filename(Press Enter for default " << filename << " ):  " << endl;
-		cin >> noskipws >> fileTmp;
-		if (fileTmp.size() > 0 && fileTmp.at(0) != '\n') {  //Not Null input
-			filename = fileTmp;
+		vector<string> files;
+		getFiles(inputPath, files);
+		sort(files.begin(), files.end());
+		cout << "Choose one of the following files as input:" << endl;
+		for (size_t i = 0;i < files.size();i++) {
+			cout << "[" << i << "]" << " " << files[i] << endl;
 		}
+		cout << "Your Choice (Type in the No.): ";
+		int input;
+		cin >> input;
+		filename = files[input];
+	}
+	else {
+		cout << "Invalid Input!" << endl;
+		return -1;
 	}
 
-	// Read Image Data
+	/* Read Image Data */
+	filename = ((string)inputPath).substr(0,size((string)inputPath)-1) + filename;
+	cout << filename << endl;
 	Mat src = imread(filename);
 	if (!src.data) {
 		cout << "Read Image File Failure!" << endl;
 		system("pause");
-		return 0;
+		return -1;
 	}
-
-	imshow("src", src);
-	
-	
-	
-	// SWT - Stroke Width Transform
-	TextDetector td(src, iw);
-	td.prePorcess();
-	td.strokeWidthTransform();
-	cout << "SWT Finished" << endl;
-	
-	td.connectedComponentTwoPass();
-	cout << "CC Finished" << endl;
-	td.calcBoundingRect();
-	td.connectedComponentFilter();
+	cout << "Read file [" << filename << "] success!" << endl;
 
 
-	vector<Rect> boxes = td.getResult();
-	for (size_t i = 0;i < boxes.size();i++) {
-		Rect currentBox = boxes[i];
-		rectangle(src, currentBox, Scalar(255, 0, 0), 1);
-	}
-	imshow("boxes", src);
+	/* Run the text detection */
+	TextDetector td(src, iw, true, false);
+	td.runDetection();
 
-
-	waitKey(0);
+	/* Finish!*/
 	system("pause");
-
 	return 0;
 }
 

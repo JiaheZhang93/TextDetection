@@ -11,30 +11,58 @@ TextDetector::TextDetector(Mat src, ImageWriter &iw) {
 	TextDetector::rows = src.rows;
 	TextDetector::cols = src.cols;
 	TextDetector::iw = iw;
+	TextDetector::isSaveMiddleResult = true;
+	TextDetector::isShowMiddleResult = true;
 }
 
-TextDetector::TextDetector(Mat src, ImageWriter &iw, bool isSaveMiddleResult) {
-	TextDetector::TextDetector(src, iw);
+TextDetector::TextDetector(Mat src, ImageWriter &iw, bool isSaveMiddleResult, bool isShowMiddleResult) {
+	TextDetector::srcImg = src;
+	TextDetector::rows = src.rows;
+	TextDetector::cols = src.cols;
+	TextDetector::iw = iw;
 	TextDetector::isSaveMiddleResult = isSaveMiddleResult;
+	TextDetector::isShowMiddleResult = isShowMiddleResult;
+}
+
+void TextDetector::runDetection() {
+	prePorcess();
+	strokeWidthTransform();
+	cout << "SWT Finished!" << endl;
+	connectedComponentTwoPass();
+	cout << "Connected Component Finished!" << endl;
+	calcBoundingRect();
+	cout << "Start filtering the candidate regions! (This might take some time)" << endl;
+	connectedComponentFilter();
+	cout << "Successfully Finished! :-) " << endl;
+	if (isShowMiddleResult) {
+		waitKey(0);
+	}
+	
 }
 
 void TextDetector::prePorcess() {
-	// Pre-Processing 
-	// SWT needs an input of binary edge file
-	// RGB to Gray
+	/* Pre-Processing 
+	 * SWT needs an input of binary edge file */
+
+	/* RGB to Gray */
 	grayImg.create(rows, cols, CV_32F);  // Create a float mat
 	cvtColor(srcImg, grayImg, CV_RGB2GRAY);
-	imshow("gray", grayImg);
-	iw.writeImage(grayImg, "Gray.jpg");
-	// Canny Edge Detector
+	/* Canny Edge Detector */
 	Canny(grayImg, edgeMap, 50, 150);
-	imshow("canny", edgeMap);
-	iw.writeImage(edgeMap, "CannyEdge.jpg");
+	if (isShowMiddleResult) {
+		imshow("gray", grayImg);
+		imshow("canny", edgeMap);
+	}
+	if (isSaveMiddleResult) {
+		iw.writeImage(srcImg, "Source.jpg");
+		iw.writeImage(grayImg, "Gray.jpg");
+		iw.writeImage(edgeMap, "CannyEdge.jpg");
+	}
 }
 
 void TextDetector::strokeWidthTransform() {
 
-	// Find gradient horizontal and vertical gradient
+	/* Find gradient horizontal and vertical gradient */
 	// Using Sobel
 	Mat dx(rows, cols, CV_32F);
 	Mat dy(rows, cols, CV_32F);
@@ -45,7 +73,7 @@ void TextDetector::strokeWidthTransform() {
 	//divide(dy, dx, tanTheta); 
 
 
-	// Get all the Edge Points
+	/* Get all the Edge Points */
 	// TODO: Iteration efficiency can be improved here
 	vector<Point> edges;
 	for (int i = 0;i < rows;i++) {
@@ -57,10 +85,10 @@ void TextDetector::strokeWidthTransform() {
 	}
 
 
-	// Initialize the mat with maximun value
+	/* Initialize the mat with maximun value */
 	swtMap = Mat::ones(rows, cols, CV_16U) * 65535;
 
-	// First pass of SWT
+	/* First pass of SWT */
 	size_t lengthEdges = edges.size();
 	vector<StrokePoint> strokePoints; // Stroke points & corresponding ray path
 	for (size_t i = 0;i < lengthEdges;i++) {
@@ -131,8 +159,8 @@ void TextDetector::strokeWidthTransform() {
 		}
 	}
 
-	// Second Pass: Iterate all the stroke points found above
-	// and take its median on its ray path as the final stroke width
+	/* Second Pass: Iterate all the stroke points found above
+	 * and take its median on its ray path as the final stroke width */
 	for (size_t i = 0;i < strokePoints.size();i++) {
 		StrokePoint current = strokePoints.at(i);
 		vector<Point> currentRayPath = current.getRayPath();
@@ -143,7 +171,7 @@ void TextDetector::strokeWidthTransform() {
 		for (size_t j = 0;j < currentRayPath.size();j++) {
 			strokeWidthOnRay.push_back(swtMap.at<ushort>(currentRayPath.at(j)));
 		}
-		
+
 		// Get the median value
 		double strokeMedian = getMedianFromVector(strokeWidthOnRay);
 
@@ -155,7 +183,7 @@ void TextDetector::strokeWidthTransform() {
 
 	}
 
-	// Remove 65535
+	/* Remove 65535 */
 	for (int i = 0;i < rows;i++) {
 		for (int j = 0;j < cols;j++) {
 			if (swtMap.at<ushort>(i, j) == 65535) {
@@ -164,15 +192,20 @@ void TextDetector::strokeWidthTransform() {
 		}
 	}
 
-	// Output swtMap if required
+	/* Erode and Dilate*/
+	//Mat element = getStructuringElement(MORPH_RECT, Size(2, 2));
+	//erode(swtMap, swtMap, element);
+	//dilate(swtMap, swtMap, element);
+	//dilate(swtMap, swtMap, element);
+
+
+	/* Output swtMap if required */
 	if (isSaveMiddleResult) {
-		iw.writeImage(swtMap, "SWT_Map.jpg");
+		iw.writeImage(swtMap * 4000 / 65535 * 255, "SWT_Map.jpg");
 	}
-
-
-	imshow("SWT", swtMap * 40000);
-
-	//return Mat();
+	if (isShowMiddleResult) {
+		imshow("SWT", swtMap * 4000);
+	}
 }
 
 void TextDetector::connectedComponentTwoPass() {
@@ -193,7 +226,7 @@ void TextDetector::connectedComponentTwoPass() {
 	}
 	*/
 
-	// 1. first pass  
+	/* 1. first pass  */
 
 	labelMap.release();
 	swtMap.convertTo(labelMap, CV_32SC1);
@@ -246,7 +279,7 @@ void TextDetector::connectedComponentTwoPass() {
 		}
 	}
 
-	// Update equivalent labels  
+	/* Update equivalent labels  */
 	// Assigned with the smallest label in each equivalent label set  
 	for (size_t i = 2; i < labelSet.size(); i++) {
 		int curLabel = labelSet[i];
@@ -259,7 +292,7 @@ void TextDetector::connectedComponentTwoPass() {
 	}
 
 
-	// 2. second pass  
+	/* 2. second pass  */
 	for (int i = 0; i < rows; i++) {
 		int* data = labelMap.ptr<int>(i);
 		for (int j = 0; j < cols; j++) {
@@ -268,19 +301,20 @@ void TextDetector::connectedComponentTwoPass() {
 		}
 	}
 
-	// Output labelMap if required
+	/* Output labelMap if required */
 	if (isSaveMiddleResult) {
-		iw.writeImage(labelMap, "InitialConnectionLabels.jpg");
+		iw.writeImage(labelMap * 4000 / 65535 * 255, "InitialConnectionLabels.jpg");
 	}
-
-	imshow("labels", labelMap * 10000);
+	if (isShowMiddleResult) {
+		imshow("labels", labelMap * 4000);
+	}
 }
 
 void TextDetector::calcBoundingRect() {
 	size_t labelsCnt = labelSet.size() - 2;
 	labelPoints = new vector<Point>[labelsCnt];   // The labels value begins from 2
 
-	// Use the labelMap data to fill labelPoints
+	/* Use the labelMap data to fill labelPoints */
 	for (int i = 0;i < rows;i++) {
 		int* data_curRow = labelMap.ptr<int>(i);
 		for (int j = 0;j < cols;j++) {
@@ -291,7 +325,7 @@ void TextDetector::calcBoundingRect() {
 		}
 	}
 
-	// Get bounding box of each label
+	/* Get bounding box of each label */
 	for (int k = 0;k < labelsCnt;k++) {
 		vector<Point> currentPointSet = labelPoints[k];
 		Rect currentBoundingRect = boundingRect(currentPointSet);
@@ -299,13 +333,24 @@ void TextDetector::calcBoundingRect() {
 	}
 	resultBoundings = Boundings0;
 
+	/* Output boundings Image if required */
+	Mat outMat = drawBoundingsOnMat(srcImg, resultBoundings);
+	if (isSaveMiddleResult) {
+		iw.writeImage(outMat, "Boundings_Before_Filter.jpg");
+	}
+	if (isShowMiddleResult) {
+		imshow("Boundings Before Filter", outMat);
+	}
+
 }
 
 void TextDetector::connectedComponentFilter() {
 	// TODO: Improve the efficiency of this method
 	/* Remove some boundings using five conditions */
 	resultBoundings.clear();
+	std::cout << "Finished 00%" ;
 	for (size_t i = 0;i < Boundings0.size();i++) {
+		std::cout << "\b\b\b" << cv::format("%.2d", i * 100 / Boundings0.size()) << "%" ;
 		Rect currentBox = Boundings0[i];
 		vector<Point> currentLabels = labelPoints[i];
 		if (currentLabels.size() < 2) {
@@ -329,28 +374,42 @@ void TextDetector::connectedComponentFilter() {
 		double meanSW = mean;
 		int height = currentBox.size().height;
 		int width = currentBox.size().width;
+		
+
+		// Conditions
+		bool cond1 = height > 10 && height < 100;
+		if (!cond1) {
+			continue;
+		}
+		bool cond2 = varianceSW / meanSW > 0.08;  // 0.5
+		if (!cond2) {
+			continue;
+		}
 		double aspectRatio = height * 1.0 / width;
 		double diameter = sqrt(pow(height, 2) + pow(width, 2));
 		double medianSW = getMedianFromVector(labelStrokes);
-
-		// Conditions
-		bool cond1 = height > 10 && height < 300;
-		bool cond2 = varianceSW / meanSW > 0.08;  // 0.5
 		bool cond3 = diameter / medianSW > 2;  // 10 
-		bool cond4 = aspectRatio > 0.5 && aspectRatio < 5;  // 0.1-10
+		if (!cond3) {
+			continue;
+		}
+		bool cond4 = aspectRatio > 0.1 && aspectRatio < 10;  // 0.1-10
+		if (!cond4) {
+			continue;
+		}
 		bool cond5 = true;  // Condition 5 is to remove overlap boxes, which is implemented in next step
 
-		if (cond1 && cond2 && cond3 && cond4 && cond5) {
+		if (cond5) {   // cond1 && cond2 && cond3 && cond4 && cond5
 			resultBoundings.push_back(currentBox);
 		}
 	}
+	std::cout << "\b\b\b\b All!" << endl;
 
 	/* Combine if overlap */
 	if (resultBoundings.size() < 2) {
 		return;
 	}
 
-	vector<int> reserveMask(resultBoundings.size(),1);
+	vector<int> reserveMask(resultBoundings.size(), 1);
 	for (size_t i = 0;i < resultBoundings.size() - 1;i++) {
 		//vector<int>::iterator it = find(indexToErease.begin(), indexToErease.end(), i);
 		//if (it != indexToErease.end()) { // If i is in the vector indexToErease
@@ -365,12 +424,19 @@ void TextDetector::connectedComponentFilter() {
 			}
 			double ratio = overlapRatio(resultBoundings[i], resultBoundings[j]);
 			double yDis = yDistance(resultBoundings[i], resultBoundings[j]);
-			if (ratio > 0 || yDis < 2) {  // Overlap or very near on Y axis
+			double xDis = xDistance(resultBoundings[i], resultBoundings[j]);
+			int minDis = xDis > yDis ? yDis : xDis;
+			// only consider Y axis here will connect regions into line ratio > 0 || yDis < 2
+			if (ratio > 0 || (yDis < 5 && xDis < 10)){  // Overlap or very near on Y axis (yDis < 5 && xDis < 2)
 				resultBoundings[i] = resultBoundings[i] | resultBoundings[j]; // Union of both Rect
 				reserveMask[j] = 0;
 			}
 		}
 	}
+
+	/* TODO: Combine if nearby */
+	
+
 	vector<Rect> boxTmp;
 	for (size_t i = 0;i < resultBoundings.size();i++) {
 		if (reserveMask[i] > 0) {
@@ -382,11 +448,34 @@ void TextDetector::connectedComponentFilter() {
 	cout << "Filter finished!" << endl;
 
 	/* Sort the bounding boxes */
-	// TODO
+	// TODO: This is needed for character recognition
+
+	/* Output boundings Image if required */
+	Mat outMat = drawBoundingsOnMat(srcImg, resultBoundings);
+	if (isSaveMiddleResult) {
+		iw.writeImage(outMat, "Final_Result.jpg");
+	}
+	if (isShowMiddleResult) {
+		imshow("Final Result", outMat);
+	}
 }
 
 vector<Rect> TextDetector::getResult() {
 	return  resultBoundings;
+}
+
+void getFiles(string path, vector<string>& files) {
+	// Ref: blog.csdn.net/u012005313/article/details/50687297
+	// File Handles
+	_finddata_t file;
+	intptr_t  lf = 0;
+	// File info
+	lf = _findfirst(path.c_str(), &file);
+	while (_findnext(lf, &file) == 0) { 
+		if (strcmp(file.name, ".") == 0 || strcmp(file.name, "..") == 0)
+			continue;
+		files.push_back(file.name);
+	}
 }
 
 double euclideanDistance(Point a, Point b) {
@@ -451,7 +540,47 @@ double overlapRatio(const Rect & r1, const Rect & r2) {
 }
 
 double yDistance(const Rect & r1, const Rect & r2) {
-	return 10.0;
+	int y1Up = r1.y;
+	int y1Down = r1.y + r1.height;
+	int y2Up = r2.y;
+	int y2Down = r2.y + r2.height;
+
+	vector<int> disTmp;
+	disTmp.push_back(abs(y1Up - y2Up));
+	disTmp.push_back(abs(y1Down - y2Down));
+	disTmp.push_back(abs(y1Up - y2Down));
+	disTmp.push_back(abs(y2Up - y1Down));
+	
+	auto minPosition = min_element(disTmp.begin(), disTmp.end());
+
+	return *minPosition;
+}
+
+double xDistance(const Rect & r1, const Rect & r2) {
+	int x1Left = r1.x;
+	int x1Right = r1.x + r1.width;
+	int x2Left = r2.x;
+	int x2Right = r2.x + r2.width;
+
+	vector<int> disTmp;
+	//disTmp.push_back(abs(x1Left - x2Up));
+	//disTmp.push_back(abs(x1Right - x2Right));
+	disTmp.push_back(abs(x1Left - x2Right));
+	disTmp.push_back(abs(x2Left - x1Right));
+
+	auto minPosition = min_element(disTmp.begin(), disTmp.end());
+
+	return *minPosition;
+}
+
+Mat drawBoundingsOnMat(Mat src, vector<Rect> boundings) {
+	Mat tmp;
+	src.copyTo(tmp);
+	for (size_t i = 0;i < boundings.size();i++) {
+		Rect currentBox = boundings[i];
+		rectangle(tmp, currentBox, Scalar(0, 0, 255), 2);
+	}
+	return tmp;
 }
 
 ImageWriter::ImageWriter() {
@@ -462,7 +591,8 @@ ImageWriter::ImageWriter(String path) {
 }
 
 void ImageWriter::writeImage(Mat src, String filename) {
-	String wholePath = path + cnt + "_" + filename;
+	String wholePath = path + format("%.2d", cnt) + "_" + filename;
+	cout << "Output File [" << wholePath << "] Saved!" << endl;
 	if (imwrite(wholePath, src)) {   // if successful
 		savedFiles.push_back(wholePath);
 		cnt++;

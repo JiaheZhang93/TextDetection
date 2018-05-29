@@ -2,14 +2,23 @@
 #include <list>
 #include <vector>
 #include <numeric>
+#include <io.h>
+
+#include <stdlib.h>  
+#include <stdio.h>  
+#include <string.h>   
+#include <direct.h>  
 
 using namespace cv;
 using namespace std;
 
+void getFiles(string path, vector<string>& files); // get files list from a fixed path
 double euclideanDistance(Point a, Point b);
 double getMedianFromVector(vector<double>);
 double overlapRatio(const Rect &r1, const Rect &r2);
 double yDistance(const Rect &r1, const Rect &r2); // Calulate the distance between 2 Rect on Y axis
+double xDistance(const Rect &r1, const Rect &r2); // Calulate the distance between 2 Rect on X axis
+Mat drawBoundingsOnMat(Mat src, vector<Rect>boundings);
 
 class StrokePoint : public cv::Point { // Extend from cv::Point
 private:
@@ -24,7 +33,7 @@ public:
 
 class ImageWriter {
 private:
-	int cnt = 1;
+	int cnt = 0;
 	String path;
 	list<String> savedFiles;
 public:
@@ -36,7 +45,8 @@ public:
 class TextDetector {
 
 private:
-	bool isSaveMiddleResult = true;
+	bool isSaveMiddleResult;
+	bool isShowMiddleResult;
 	int rows, cols;
 	int searchDirection = -1;  //gradient direction is either 1 to detect dark text on light background or -1 to detect light text on dark background.
 	ImageWriter iw;
@@ -54,7 +64,8 @@ private:
 	
 public:
 	TextDetector(Mat src, ImageWriter &iw);
-	TextDetector(Mat src, ImageWriter &iw, bool isSaveMiddleResult);
+	TextDetector(Mat src, ImageWriter &iw, bool isSaveMiddleResult, bool isShowMiddleResult);
+	void runDetection();
 	void prePorcess();
 	void strokeWidthTransform();
 	void connectedComponentTwoPass(); // Connected Component Analysis
