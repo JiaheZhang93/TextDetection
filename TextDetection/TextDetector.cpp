@@ -392,7 +392,7 @@ void TextDetector::connectedComponentFilter() {
 		if (!cond3) {
 			continue;
 		}
-		bool cond4 = aspectRatio > 0.1 && aspectRatio < 10;  // 0.1-10
+		bool cond4 = aspectRatio > 0.5 && aspectRatio < 5;  // 0.1-10
 		if (!cond4) {
 			continue;
 		}
@@ -427,7 +427,7 @@ void TextDetector::connectedComponentFilter() {
 			double xDis = xDistance(resultBoundings[i], resultBoundings[j]);
 			int minDis = xDis > yDis ? yDis : xDis;
 			// only consider Y axis here will connect regions into line ratio > 0 || yDis < 2
-			if (ratio > 0 || (yDis < 5 && xDis < 10)){  // Overlap or very near on Y axis (yDis < 5 && xDis < 2)
+			if (ratio > 0 || (yDis < 5 && xDis < 1)){  // Overlap or very near on Y axis (yDis < 5 && xDis < 2)
 				resultBoundings[i] = resultBoundings[i] | resultBoundings[j]; // Union of both Rect
 				reserveMask[j] = 0;
 			}

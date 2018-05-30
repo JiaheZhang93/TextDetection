@@ -41,10 +41,14 @@ int main(int argc, char *argv[]) {
 		cout << "Your Choice (Type in the No.): ";
 		int input;
 		cin >> input;
+		if (input > files.size() - 1) {
+			cout << "Invalid Input!" << endl;
+			return -1;
+		}
 		filename = files[input];
 	}
 	else {
-		cout << "Invalid Input!" << endl;
+		cout << "Invalid Input Arguments!" << endl;
 		return -1;
 	}
 
