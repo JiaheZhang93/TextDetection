@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>D:\libraries\OpenCV34\build\x64\vc14\lib\opencv_world341.lib;$(IncludePath)</IncludePath>
+    <IncludePath>D:\libraries\OpenCV34\build\include\;D:\libraries\OpenCV34\build\include\opencv;D:\libraries\OpenCV34\build\include\opencv2;$(IncludePath)</IncludePath>
     <LibraryPath>D:\libraries\OpenCV34\build\x64\vc14\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup>

@@ -1,3 +1,11 @@
+/*
+ *This is the header file of TextDetector
+ *All funtions and classes are defined here
+ */
+
+#define MAX_STROKE_STEPS 20  //Set the maximum stroke search steps
+#define SAME_DIRECTION_TH CV_PI/2   // The threshold to judge if the direction is same
+
 #include <opencv2\opencv.hpp>
 #include <list>
 #include <vector>
@@ -12,6 +20,7 @@
 using namespace cv;
 using namespace std;
 
+/* Indepedent funtions */
 void getFiles(string path, vector<string>& files); // get files list from a fixed path
 double euclideanDistance(Point a, Point b);
 double getMedianFromVector(vector<double>);
@@ -20,6 +29,9 @@ double yDistance(const Rect &r1, const Rect &r2); // Calulate the distance betwe
 double xDistance(const Rect &r1, const Rect &r2); // Calulate the distance between 2 Rect on X axis
 Mat drawBoundingsOnMat(Mat src, vector<Rect>boundings);
 
+/* Classes */
+
+/* StrokePoint is designed for describe strokepoints ans store realated info */
 class StrokePoint : public cv::Point { // Extend from cv::Point
 private:
 	double strokeWidth;
@@ -31,6 +43,7 @@ public:
 	double getStrokeWidth();
 };
 
+/* ImageWriter can be used for writing image files with self-increase number*/
 class ImageWriter {
 private:
 	int cnt = 0;
@@ -42,6 +55,7 @@ public:
 	void writeImage(Mat src, String filename);
 };
 
+/* This class is the implementation of the algorithm proposed */
 class TextDetector {
 
 private:
@@ -66,12 +80,14 @@ public:
 	TextDetector(Mat src, ImageWriter &iw);
 	TextDetector(Mat src, ImageWriter &iw, bool isSaveMiddleResult, bool isShowMiddleResult);
 	void runDetection();
+	// TODO: Methods bellow may be set to private in future version
 	void prePorcess();
 	void strokeWidthTransform();
 	void connectedComponentTwoPass(); // Connected Component Analysis
 	void calcBoundingRect();
 	void connectedComponentFilter();
 
+	// Get the result boundings for following steps if any
 	vector<Rect> getResult(); // Return the result boundings vector<Rect> resultBoundings
 
 };

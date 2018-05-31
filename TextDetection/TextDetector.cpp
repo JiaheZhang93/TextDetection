@@ -3,9 +3,8 @@
 #include <vector>
 #include <math.h>
 
-#define MAX_STROKE_STEPS 20  //Set the maximum stroke search steps
-#define SAME_DIRECTION_TH CV_PI/2   // The threshold to judge if the direction is same
 
+/* Constructor of TextDetector with default isSaveMiddleResult and isShowMiddleResult*/
 TextDetector::TextDetector(Mat src, ImageWriter &iw) {
 	TextDetector::srcImg = src;
 	TextDetector::rows = src.rows;
@@ -15,6 +14,7 @@ TextDetector::TextDetector(Mat src, ImageWriter &iw) {
 	TextDetector::isShowMiddleResult = true;
 }
 
+/* Constructor of TextDetector with user set isSaveMiddleResult and isShowMiddleResult*/
 TextDetector::TextDetector(Mat src, ImageWriter &iw, bool isSaveMiddleResult, bool isShowMiddleResult) {
 	TextDetector::srcImg = src;
 	TextDetector::rows = src.rows;
@@ -24,6 +24,7 @@ TextDetector::TextDetector(Mat src, ImageWriter &iw, bool isSaveMiddleResult, bo
 	TextDetector::isShowMiddleResult = isShowMiddleResult;
 }
 
+/* The whole progress of text detection */
 void TextDetector::runDetection() {
 	prePorcess();
 	strokeWidthTransform();
@@ -40,10 +41,9 @@ void TextDetector::runDetection() {
 	
 }
 
+/* Pre-Processing
+ * SWT needs an input of binary edge file */
 void TextDetector::prePorcess() {
-	/* Pre-Processing 
-	 * SWT needs an input of binary edge file */
-
 	/* RGB to Gray */
 	grayImg.create(rows, cols, CV_32F);  // Create a float mat
 	cvtColor(srcImg, grayImg, CV_RGB2GRAY);
@@ -60,6 +60,8 @@ void TextDetector::prePorcess() {
 	}
 }
 
+
+/* The implementation of core Stroke Width Transform algorithm */
 void TextDetector::strokeWidthTransform() {
 
 	/* Find gradient horizontal and vertical gradient */
@@ -208,6 +210,7 @@ void TextDetector::strokeWidthTransform() {
 	}
 }
 
+/* Tranditional Two-Pass method for connected component analysis */
 void TextDetector::connectedComponentTwoPass() {
 	// connected component analysis (4-component)  
 	// use two-pass algorithm  
@@ -310,6 +313,7 @@ void TextDetector::connectedComponentTwoPass() {
 	}
 }
 
+/* Calculate the bounding box of a set of labeled points */
 void TextDetector::calcBoundingRect() {
 	size_t labelsCnt = labelSet.size() - 2;
 	labelPoints = new vector<Point>[labelsCnt];   // The labels value begins from 2
@@ -344,6 +348,7 @@ void TextDetector::calcBoundingRect() {
 
 }
 
+/* Filter the regions using 5 conditons which are optimized */
 void TextDetector::connectedComponentFilter() {
 	// TODO: Improve the efficiency of this method
 	/* Remove some boundings using five conditions */
@@ -425,7 +430,7 @@ void TextDetector::connectedComponentFilter() {
 			double ratio = overlapRatio(resultBoundings[i], resultBoundings[j]);
 			double yDis = yDistance(resultBoundings[i], resultBoundings[j]);
 			double xDis = xDistance(resultBoundings[i], resultBoundings[j]);
-			int minDis = xDis > yDis ? yDis : xDis;
+			//double minDis = xDis > yDis ? yDis : xDis;
 			// only consider Y axis here will connect regions into line ratio > 0 || yDis < 2
 			if (ratio > 0 || (yDis < 5 && xDis < 1)){  // Overlap or very near on Y axis (yDis < 5 && xDis < 2)
 				resultBoundings[i] = resultBoundings[i] | resultBoundings[j]; // Union of both Rect
@@ -436,7 +441,7 @@ void TextDetector::connectedComponentFilter() {
 
 	/* TODO: Combine if nearby */
 	
-
+	/* Generate the result */
 	vector<Rect> boxTmp;
 	for (size_t i = 0;i < resultBoundings.size();i++) {
 		if (reserveMask[i] > 0) {
@@ -460,10 +465,12 @@ void TextDetector::connectedComponentFilter() {
 	}
 }
 
+/* Return the result bounding boxes */
 vector<Rect> TextDetector::getResult() {
 	return  resultBoundings;
 }
 
+/* Get all the file names under a path -- Commandline User Interfase*/
 void getFiles(string path, vector<string>& files) {
 	// Ref: blog.csdn.net/u012005313/article/details/50687297
 	// File Handles
@@ -478,11 +485,14 @@ void getFiles(string path, vector<string>& files) {
 	}
 }
 
+/* Determine the Euclidean Distance of two points cv::Point */
 double euclideanDistance(Point a, Point b) {
 	Point tmp = a - b;
 	return sqrt(pow(tmp.x, 2) + pow(tmp.y, 2));
 }
 
+/* Determine the medeian value of a vector of numbers */
+// TODO: use template instead of double
 double getMedianFromVector(vector<double> input) {
 	size_t sizeVec = input.size();
 	if (sizeVec == 0) {
@@ -505,6 +515,7 @@ double getMedianFromVector(vector<double> input) {
 	return median;
 }
 
+/* Determine the overlap ratio of two rectange cv::Rect */
 double overlapRatio(const Rect & r1, const Rect & r2) {
 	int x1 = r1.x;
 	int y1 = r1.y;
@@ -539,6 +550,7 @@ double overlapRatio(const Rect & r1, const Rect & r2) {
 	return ratio;
 }
 
+/* Determine the minimum distance on Y axis of two rectangle cv::Rect */
 double yDistance(const Rect & r1, const Rect & r2) {
 	int y1Up = r1.y;
 	int y1Down = r1.y + r1.height;
@@ -556,6 +568,7 @@ double yDistance(const Rect & r1, const Rect & r2) {
 	return *minPosition;
 }
 
+/* Determine the minimum distance on Y axis of two rectangle cv::Rect */
 double xDistance(const Rect & r1, const Rect & r2) {
 	int x1Left = r1.x;
 	int x1Right = r1.x + r1.width;
@@ -573,6 +586,7 @@ double xDistance(const Rect & r1, const Rect & r2) {
 	return *minPosition;
 }
 
+/* Draw all the bounding rects in a vector on the source image */
 Mat drawBoundingsOnMat(Mat src, vector<Rect> boundings) {
 	Mat tmp;
 	src.copyTo(tmp);
@@ -583,13 +597,16 @@ Mat drawBoundingsOnMat(Mat src, vector<Rect> boundings) {
 	return tmp;
 }
 
+/* Default constructor of ImageWriter*/
 ImageWriter::ImageWriter() {
 }
 
+/* Contructor of ImageWriter with fixed output path */
 ImageWriter::ImageWriter(String path) {
 	ImageWriter::path = path;
 }
 
+/* Write the image with a self increase counter */
 void ImageWriter::writeImage(Mat src, String filename) {
 	String wholePath = path + format("%.2d", cnt) + "_" + filename;
 	cout << "Output File [" << wholePath << "] Saved!" << endl;
@@ -599,6 +616,7 @@ void ImageWriter::writeImage(Mat src, String filename) {
 	}
 }
 
+/* The constructor of StrokePoint */
 StrokePoint::StrokePoint(Point p, double width, vector<Point> ray) {
 	StrokePoint::x = p.x;
 	StrokePoint::y = p.y;
@@ -606,10 +624,12 @@ StrokePoint::StrokePoint(Point p, double width, vector<Point> ray) {
 	StrokePoint::rayPath = ray;
 }
 
+/* Return the ray path */
 vector<Point> StrokePoint::getRayPath() {
 	return rayPath;
 }
 
+/* Return the stroke width */
 double StrokePoint::getStrokeWidth() {
 	return strokeWidth;
 }

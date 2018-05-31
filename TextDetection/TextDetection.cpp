@@ -1,5 +1,6 @@
 // TextDetection.cpp : main function
 // By JiaheZhang , 2018/05/24
+// TIEI, Tianjin University
 // Computer Vision project
 // This project performs a text detector based on SWT(Stroke Width Transform)
 
@@ -18,7 +19,7 @@ int main(int argc, char *argv[]) {
 	char inputPath[100];
 	memset(inputPath, 0, 100);
 	_getcwd(inputPath, 100); // Get current path
-	strcat_s(inputPath, "\\images\\*");
+	strcat_s(inputPath, "\\images\\*");  // Format: "\\filename\\*"
 	string filename = "";
 
 	/* Set the output files info*/
@@ -27,7 +28,7 @@ int main(int argc, char *argv[]) {
 	if (_access(outputPath.c_str(), 6) == -1) {
 		_mkdir(outputPath.c_str());
 	}
-	ImageWriter iw(outputPath);
+	ImageWriter iw(outputPath);  // Defined in TextDetector.h
 
 	/* User Interface */
 	if (argc == 1) {  // No extra input arguments
@@ -43,12 +44,14 @@ int main(int argc, char *argv[]) {
 		cin >> input;
 		if (input > files.size() - 1) {
 			cout << "Invalid Input!" << endl;
+			system("pause");
 			return -1;
 		}
 		filename = files[input];
 	}
 	else {
 		cout << "Invalid Input Arguments!" << endl;
+		system("pause");
 		return -1;
 	}
 
